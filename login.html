@@ -1,0 +1,161 @@
+
+
+
+************************************************
+
+Request URL: https://s500000app.corp.tander.ru/login.html
+Request Method: GET
+Status Code: 200 OK (from disk cache)
+Remote Address: 10.12.156.5:443
+Referrer Policy: strict-origin-when-cross-origin
+
+************************************************
+
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Авторизация</title>
+    <link rel="stylesheet" type="text/css" href="ext/resources/css/ext-all-gray.css" />
+    <script type="text/javascript" language="JavaScript" src="ext/ext-all.js"></script>
+    <script type="text/javascript" language="JavaScript" src="ext/locale/ext-lang-ru.js"></script>
+<script>
+Ext.onReady(function() {
+    var URL_PREFIX = '/uidispd';
+
+    function OnServerError() {
+        Ext.Msg.alert('Ошибка', 'Сервер не отвечает. Сессия может быть прервана. Пожалуйста, повторите авторизацию.', function() {
+            window.location.href = '/login.html';
+        });
+    }
+	getCGIVar = function(name) {
+		var startPos = window.location.href.indexOf('&'+name+'=');
+		if (startPos == (-1)) {
+			startPos = window.location.href.indexOf('?'+name+'=');
+			if (startPos == (-1)) {
+				return (-1);
+			}
+		}
+		var endPos = window.location.href.indexOf('&', startPos+1);
+		if (endPos == (-1)) {
+			return window.location.href.substr(startPos+name.length+2);
+		} else {
+			return window.location.href.substr(startPos+name.length+2, endPos-(startPos+name.length+2));
+		}
+	}
+
+    var form = Ext.create('Ext.form.Panel', {
+        bodyPadding: 5,
+        url: URL_PREFIX+'?f=ifc_api.login',
+        layout: 'anchor',
+        defaults: {
+            anchor: '100%',
+            listeners: {
+                specialkey: function(field, e) {
+                    if (e.getKey() == e.ENTER) {
+                        Ext.ComponentManager.get('Button_submit').handler();
+                    }
+                }
+            }
+        },
+        defaultType: 'textfield',
+        items: [{
+            fieldLabel: 'Пользователь',
+            id: 'Textfield_userName',
+            name: 'user_name',
+            allowBlank: false
+        },{
+            fieldLabel: 'Пароль',
+            name: 'password',
+            inputType: 'password',
+            allowBlank: false
+        }],
+        buttons: [{
+            id: 'Button_submit',
+            text: 'Войти',
+            handler: function() {
+				var formPanel = this.up('form');
+                var form = formPanel.getForm();
+                if (form.isValid()) {
+					formPanel.setLoading('Авторизация');
+                    form.submit({
+                        method: 'POST',
+                        success: function(form, action) {
+							formPanel.setLoading( false );
+                            var sid = action.result.result;
+                            Ext.Ajax.request({
+                                url: URL_PREFIX+'?f=ifc_api.get_current_user_theme&_sid='+sid,
+                                success: function(response) {
+                                    if (response.responseText.length == 0) {
+                                        OnServerError();
+                                    } else {
+                                        var result = eval('('+response.responseText+')');
+                                        if (result['error'] !== undefined) {
+                                            Ext.Msg.alert('Ошибка', result['error']['message']);
+                                        } else {
+                                            var theme = result['result'];
+                                            if (theme == null) {
+                                                theme = 'gray';
+                                            }
+                                            window.name = "rcExplorer_" + (new Date()).getTime() + "-" + sid;
+											//если объявлена переменная app транлируем ее в explorer.html
+											var appVar = getCGIVar('app');
+                                            if ((theme!=='') && (theme!=='default')) {
+                                                window.location.href = '/explorer.html?theme='+theme + (appVar == -1? '': '&app='+appVar);
+                                            } else {
+                                                window.location.href = '/explorer.html' + (appVar == -1? '': '?app='+appVar);
+                                            }
+                                        }
+                                    }
+                                },
+                                failure: function(response, opts) {
+                                    OnServerError();
+                                }
+                            });
+                        },
+                        failure: function(form, action) {
+							formPanel.setLoading( false );
+                            switch (action.failureType) {
+                                case Ext.form.action.Action.CLIENT_INVALID:
+                                    Ext.Msg.alert('Ошибка', 'Поля формы содержат ошибки');
+                                    break;
+                                case Ext.form.action.Action.CONNECT_FAILURE:
+                                    Ext.Msg.alert('Ошибка', 'Невозможно связаться с сервером');
+                                    break;
+                                case Ext.form.action.Action.SERVER_INVALID:
+                                    Ext.Msg.alert('Ошибка', action.result.error.message);
+                            }
+                        }
+                    });
+                }
+            }
+        },{
+            text: 'Сбросить',
+            handler: function() {
+                this.up('form').getForm().reset();
+            }
+        }]
+    });
+
+    Ext.create('Ext.window.Window', {
+        id: 'Window_login',
+        title: 'Авторизация',
+        height: 130,
+        width: 350,
+        layout: 'fit',
+        closable: false,
+        resizable: false,
+        draggable: false,
+        items: [form],
+        renderTo: Ext.getBody()
+    }).center().show();
+    Ext.ComponentManager.get('Textfield_userName').focus();
+
+    window.onresize = function() {
+        Ext.getCmp('Window_login').center();
+    }
+});
+</script>
+</head>
+<body>
+</body>
+</html>
